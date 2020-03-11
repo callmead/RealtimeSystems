@@ -1,0 +1,154 @@
+#include <vxWorks.h> /* Always include this as the first thing in every program */
+#include <stdio.h> /* we use printf */
+#include <taskLib.h> /* we use taskSpawn */
+#include <sysLib.h> /* we use sysClk... */
+#include <msgQLib.h> /* we use message queues */
+#include <time.h>
+
+/* function prototypes */
+void Client1(void);
+void Client2(void);
+void Client3(void);
+void Server(void);
+
+/* defines */
+#define MAX_MESSAGES 100
+#define MAX_MESSAGE_LENGTH 50
+
+/* globals */
+MSG_Q_ID mqId;
+time_t ltime;
+SEM_ID messageSem;	/* Semaphore */
+char msgBuf[MAX_MESSAGE_LENGTH];
+
+/* Creating semaphore */
+void createSemaphore (){ 
+	messageSem = semBCreate (0, 1); //FIFO, full
+} 
+
+/* function to create the message queue and two tasks */
+void message(void){
+	createSemaphore ();
+	int senderId1, senderId2, senderId3, receiverId;
+
+	/* create message queue */
+	if ((mqId = msgQCreate(MAX_MESSAGES,MAX_MESSAGE_LENGTH,MSG_Q_FIFO)) == NULL)
+		printf("msgQCreate in failed\n");
+
+	/* spawn the two tasks that will use the message queue */
+	if((senderId1 = taskSpawn("Client1",110,0x100,2000,(FUNCPTR)Client1,0,0,0,0,0,0,0, 0,0,0)) == ERROR)
+		printf("taskSpawn Client1 failed\n");	
+
+	if((senderId2 = taskSpawn("Client2",110,0x100,2000,(FUNCPTR)Client2,0,0,0,0,0,0,0, 0,0,0)) == ERROR)
+		printf("taskSpawn Client2 failed\n");	
+	
+	if((senderId3 = taskSpawn("Client3",110,0x100,2000,(FUNCPTR)Client3,0,0,0,0,0,0,0, 0,0,0)) == ERROR)
+		printf("taskSpawn Client3 failed\n");	
+	
+	if((receiverId = taskSpawn("Server",110,0x100,2000,(FUNCPTR)Server,0,0,0,0,0,0,0, 0,0,0)) == ERROR)
+		printf("taskSpawn Server failed\n");
+}
+
+/* Client 1 task that writes to the message queue */
+void Client1(void){
+	char message[MAX_MESSAGE_LENGTH];
+	int i = 0;
+    	while(1){
+    		/* Sending Part */
+    		semTake(messageSem, WAIT_FOREVER);
+    		sprintf(message,"Message# %d from Client1-%d", i, taskIdSelf());
+    		printf("Client1-%d * Message: %d: \n",taskIdSelf(), i++); /* print what is sent */    		
+    		
+    		if((msgQSend(mqId,message,MAX_MESSAGE_LENGTH, WAIT_FOREVER, MSG_PRI_NORMAL))== ERROR)
+    			printf("msgQSend in Client1 failed\n");
+ 		
+    		taskDelay(20*sysClkRateGet()/60);       
+    		
+            if(msgQReceive(mqId,msgBuf,MAX_MESSAGE_LENGTH, WAIT_FOREVER ) == ERROR)
+            	printf("msgQReceive in Client1 failed\n");
+            else
+            	//printf("RECEIVER %d: %s\n",taskIdSelf(), msgBuf);
+            	ltime=time(NULL); /* get current cal time */
+            	printf("Client1 Return Message from Server-%d * Received Message: %s, at %s",taskIdSelf(), msgBuf, asctime( localtime(&ltime)));
+            taskDelay(20*sysClkRateGet()/60);  
+    		
+            /*return semaphore*/
+    		semGive(messageSem);              
+     }
+}
+/* Client 2 task that writes to the message queue */
+void Client2(void){
+	char message[MAX_MESSAGE_LENGTH];
+	int i = 0;
+    	while(1){
+    		/* Sending Part */
+    		semTake(messageSem, WAIT_FOREVER);
+    		sprintf(message,"Message# %d from Client2-%d", i, taskIdSelf());
+    		printf("Client2-%d * Message: %d: \n",taskIdSelf(), i++); /* print what is sent */     		
+    		
+    		if((msgQSend(mqId,message,MAX_MESSAGE_LENGTH, WAIT_FOREVER, MSG_PRI_NORMAL))== ERROR)
+    			printf("msgQSend in Client2 failed\n");
+		
+    		taskDelay(40*sysClkRateGet()/40); 
+
+            if(msgQReceive(mqId,msgBuf,MAX_MESSAGE_LENGTH, WAIT_FOREVER ) == ERROR)
+            	printf("msgQReceive in Client2 failed\n");
+            else
+            	//printf("RECEIVER %d: %s\n",taskIdSelf(), msgBuf);
+            	ltime=time(NULL); /* get current cal time */
+            	printf("Client2 Return Message from Server-%d * Received Message: %s, at %s",taskIdSelf(), msgBuf, asctime( localtime(&ltime)));
+            taskDelay(40*sysClkRateGet()/60);    		
+    		
+            /*return semaphore*/
+    		semGive(messageSem);   
+    	}
+}
+/* Client 3 task that writes to the message queue */
+void Client3(void){
+	char message[MAX_MESSAGE_LENGTH];
+	int i = 0;
+    	while(1){
+    		/* Sending Part */
+    		semTake(messageSem, WAIT_FOREVER);
+    		sprintf(message,"Message# %d from Client3-%d", i, taskIdSelf());
+    		printf("Client3-%d * Message: %d: \n",taskIdSelf(), i++); /* print what is sent */ 
+    		if((msgQSend(mqId,message,MAX_MESSAGE_LENGTH, WAIT_FOREVER, MSG_PRI_NORMAL))== ERROR)
+    			printf("msgQSend in Client3 failed\n");
+		
+    		taskDelay(60*sysClkRateGet()/60);
+
+            if(msgQReceive(mqId,msgBuf,MAX_MESSAGE_LENGTH, WAIT_FOREVER ) == ERROR)
+            	printf("msgQReceive in Client3 failed\n");
+            else
+            	//printf("RECEIVER %d: %s\n",taskIdSelf(), msgBuf);
+            	ltime=time(NULL); /* get current cal time */
+            	printf("Client3 Return Message from Server-%d * Received Message: %s, at %s",taskIdSelf(), msgBuf, asctime( localtime(&ltime)));
+            taskDelay(60*sysClkRateGet()/60);
+    		
+            /*return semaphore*/
+    		semGive(messageSem);   
+    }
+}
+
+
+/* tasks that reads from the message queue */
+void Server(void) {
+//	char msgBuf[MAX_MESSAGE_LENGTH];
+    while(1){
+    	/* receive message */
+        if(msgQReceive(mqId,msgBuf,MAX_MESSAGE_LENGTH, WAIT_FOREVER ) == ERROR)
+        	printf("msgQReceive in Server failed\n");
+        else
+        	//printf("RECEIVER %d: %s\n",taskIdSelf(), msgBuf);
+        	ltime=time(NULL); /* get current cal time */
+        	printf("Server-%d * Received Message: %s, at %s",taskIdSelf(), msgBuf, asctime( localtime(&ltime)));
+
+    		if((msgQSend(mqId,message,MAX_MESSAGE_LENGTH, WAIT_FOREVER, MSG_PRI_NORMAL))== ERROR)
+    			printf("msgQSend in Server failed\n");
+    		
+        	taskDelay(sysClkRateGet()/60); /* delay for 1/60 of second (one tick) */        
+
+            
+    }
+}
+

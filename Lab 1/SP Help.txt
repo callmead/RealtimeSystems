@@ -1,0 +1,148 @@
+SP Help
+http://www.vxdev.com/docs/vx55man/vxworks/ref/usrLib.html
+
+sp( )
+
+NAME
+
+sp( ) - spawn a task with default parameters
+
+SYNOPSIS
+
+int sp
+    (
+    FUNCPTR func,             /* function to call */
+    int     arg1,             /* first of nine args to pass to spawned task */
+    int     arg2,
+    int     arg3,
+    int     arg4,
+    int     arg5,
+    int     arg6,
+    int     arg7,
+    int     arg8,
+    int     arg9
+    )
+DESCRIPTION
+
+This command spawns a specified function as a task with the following defaults:
+****************
+
+repeat( )
+
+NAME
+
+repeat( ) - spawn a task to call a function repeatedly
+
+SYNOPSIS
+
+int repeat
+    (
+    int     n,                /* no. of times to call func (0=forever) */
+    FUNCPTR func,             /* function to call repeatedly */
+    int     arg1,             /* first of eight args to pass to func */
+    int     arg2,
+    int     arg3,
+    int     arg4,
+    int     arg5,
+    int     arg6,
+    int     arg7,
+    int     arg8
+    )
+DESCRIPTION
+
+This command spawns a task that calls a specified function n times, with up to eight of its arguments. If n is 0, the routine is called endlessly, or until the spawned task is deleted.
+
+NOTE
+
+The task is spawned using sp( ). See the description of sp( ) for details about priority, options, stack size, and task ID.
+*****************
+period( )
+
+NAME
+
+period( ) - spawn a task to call a function periodically
+
+SYNOPSIS
+
+int period
+    (
+    int     secs,             /* period in seconds */
+    FUNCPTR func,             /* function to call repeatedly */
+    int     arg1,             /* first of eight args to pass to func */
+    int     arg2,
+    int     arg3,
+    int     arg4,
+    int     arg5,
+    int     arg6,
+    int     arg7,
+    int     arg8
+    )
+DESCRIPTION
+
+This command spawns a task that repeatedly calls a specified function, with up to eight of its arguments, delaying the specified number of seconds between calls.
+
+For example, to have i( ) display task information every 5 seconds, just type:
+
+    -> period 5, i
+NOTE
+
+The task is spawned using the sp( ) routine. See the description of sp( ) for details about priority, options, stack size, and task ID.
+
+************
+
+taskShow( )
+
+NAME
+
+taskShow( ) - display task information from TCBs
+
+SYNOPSIS
+
+STATUS taskShow
+    (
+    int tid,                  /* task ID */
+    int level                 /* 0 = summary, 1 = details, 2 = all tasks */
+    )
+DESCRIPTION
+
+This routine displays the contents of a task control block (TCB) for a specified task. If level is 1, it also displays task options and registers. If level is 2, it displays all tasks.
+
+The TCB display contains the following fields:
+
+Field	Meaning
+NAME	Task name
+ENTRY	Symbol name or address where task began execution
+TID	Task ID
+PRI	Priority
+STATUS	Task status, as formatted by taskStatusString( )
+PC	Program counter
+SP	Stack pointer
+ERRNO	Most recent error code for this task
+DELAY	If task is delayed, number of clock ticks remaining in delay (0 otherwise)
+EXAMPLE
+
+The following example shows the TCB contents for the shell task:
+
+  -> taskShow tShell, 1
+
+    NAME        ENTRY    TID    PRI  STATUS      PC       SP    ERRNO  DELAY
+  ---------- --------- -------- --- --------- -------- -------- ------ -----
+  tShell     _shell     20efcac   1 READY      201dc90  20ef980      0     0
+
+  stack: base 0x20efcac  end 0x20ed59c  size 9532   high 1452   margin 8080
+
+  options: 0x1e
+  VX_UNBREAKABLE      VX_DEALLOC_STACK    VX_FP_TASK         VX_STDIO
+
+  VxWorks Events
+  --------------
+  Events Pended on    : Not Pended
+  Received Events     : 0x0
+  Options             : N/A
+                      
+
+  D0 =       0   D4 =       0   A0 =       0   A4 =        0
+  D1 =       0   D5 =       0   A1 =       0   A5 =  203a084   SR =     3000
+  D2 =       0   D6 =       0   A2 =       0   A6 =  20ef9a0   PC =  2038614
+  D3 =       0   D7 =       0   A3 =       0   A7 =  20ef980
+  value = 34536868 = 0x20efda4
